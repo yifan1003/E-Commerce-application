@@ -48,7 +48,6 @@ def add_cart(request, product_id):
             # existing_variation is QuesrSet, need convert to list 
             exist_var_list.append(list(existing_variation))
             cart_id_list.append(item.id)
-        print(exist_var_list)
         if product_variation in exist_var_list:
             # increase the cart item quantity
             #find the current product_variation cart_item_id
