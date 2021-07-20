@@ -145,3 +145,10 @@ MEDIA_ROOT = BASE_DIR /'media'
 MESSAGE_TAGS = {
     messages.ERROR: 'danger',
 }
+
+# SMTP configuration
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_HOST_USER = 'hyifan9988@gmail.com'
+EMAIL_HOST_PASSWORD = '446164597Yifan'
+EMAIL_USE_TLS = True
