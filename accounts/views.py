@@ -10,6 +10,9 @@ from django.utils.encoding import force_bytes
 from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import EmailMessage
 from django.http import HttpResponse
+from carts.models import Cart, CartItem
+from carts.views import _cart_id
+import requests
 # Create your views here.
 def register(request):
     if request.method == 'POST':
@@ -54,9 +57,68 @@ def login(request):
 
         user = auth.authenticate(email=email, password = password)
         if user is not None:
+            try:
+                cart = Cart.objects.get(cart_id = _cart_id(request))
+                is_cart_item_exists = CartItem.objects.filter(cart=cart).exists()
+                if is_cart_item_exists:
+                    cart_item = CartItem.objects.filter(cart=cart)
+
+                    # Getting the product variations by cart_id,not sign in product_variations
+                    product_variations = []
+                    for item in cart_item:
+                        variation = item.variations.all()
+                        product_variations.append(list(variation))
+                    
+                    #Get the cart items from the user to access his product variations
+                    cart_item = CartItem.objects.filter(user=user)
+                    # check existing_variations => database
+                    # check current_variations =>product_variation
+                    # Cart_item_id => database
+                    exist_var_list = []
+                    cart_id_list = []
+                    for item in cart_item:
+                        existing_variation = item.variations.all()
+                        # existing_variation is QuesrSet, need convert to list 
+                        exist_var_list.append(list(existing_variation))
+                        cart_id_list.append(item.id)
+                    
+                    # check user's variations list has overlap variation with the product variations(not sign in, current)
+                    # And then combine two list, and assign user to cart_item(variation)
+                    # product_variations = [[blue, small], [red, large]]
+                    # exist_var_list = [[blue, medium], [red, large]]
+                    # print("product_variations", product_variations)
+                    # print("exist_var_list", exist_var_list)
+                    for pr in product_variations:
+                        if pr in exist_var_list:
+                            index = exist_var_list.index(pr)
+                            item_id = cart_id_list[index]
+                            item = CartItem.objects.get(id = item_id)
+                            item.quantity +=1
+                            item.user = user
+                            item.save()
+                        else:
+                            cart_item = CartItem.objects.filter(cart=cart)
+                            for item in cart_item:
+                                item.user = user
+                                item.save()
+
+
+            except:
+                pass
+
             auth.login(request, user)
             messages.success(request, 'You are now logged in.')
-            return redirect('dashboard')
+            url = request.META.get('HTTP_REFERER')
+            try:
+                query = requests.utils.urlparse(url).query
+                #print('query ->', query)
+                # next=/cart/checkout/
+                params = dict(x.split('=') for x in query.split('&'))
+                if 'next' in params:
+                    nextPage = params['next']
+                    return redirect(nextPage)
+            except:
+                return redirect('dashboard')
         else:
             messages.error(request, 'Invalid login credentials')
             return redirect('login')
